@@ -3,8 +3,15 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Auth from "./pages/Auth";
+import PatientProfile from "./pages/patient/PatientProfile";
+import MedicalRecords from "./pages/patient/MedicalRecords";
+import Documents from "./pages/patient/Documents";
+import HealthTimeline from "./pages/patient/HealthTimeline";
+import DoctorDashboard from "./pages/doctor/DoctorDashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -14,11 +21,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Auth />} />
+            <Route path="/patient" element={<ProtectedRoute allowedRole="patient"><PatientProfile /></ProtectedRoute>} />
+            <Route path="/patient/records" element={<ProtectedRoute allowedRole="patient"><MedicalRecords /></ProtectedRoute>} />
+            <Route path="/patient/documents" element={<ProtectedRoute allowedRole="patient"><Documents /></ProtectedRoute>} />
+            <Route path="/patient/timeline" element={<ProtectedRoute allowedRole="patient"><HealthTimeline /></ProtectedRoute>} />
+            <Route path="/doctor" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
