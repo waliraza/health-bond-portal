@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Users, Search, ChevronDown, ChevronUp, FileText, Upload as UploadIcon, Calendar, Flag, StickyNote, Download, Plus, UserPlus } from 'lucide-react';
+import { Users, Search, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import PatientCard from '@/components/doctor/PatientCard';
+import AddRecordDialog from '@/components/doctor/AddRecordDialog';
+import AssignPatientDialog from '@/components/doctor/AssignPatientDialog';
 
 const DoctorDashboard = () => {
   const { user } = useAuth();
@@ -23,12 +20,15 @@ const DoctorDashboard = () => {
   const [patientRecords, setPatientRecords] = useState<Record<string, any[]>>({});
   const [patientDocs, setPatientDocs] = useState<Record<string, any[]>>({});
   const [noteDialog, setNoteDialog] = useState<{ recordId: string; note: string } | null>(null);
-  const [addPatientDialog, setAddPatientDialog] = useState(false);
-  const [patientEmail, setPatientEmail] = useState('');
+  const [assignDialog, setAssignDialog] = useState(false);
+  const [addRecordFor, setAddRecordFor] = useState<{ patientId: string; name: string } | null>(null);
 
   const fetchAssignments = async () => {
     if (!user) return;
-    const { data } = await supabase.from('doctor_assignments').select('*, profiles:patient_id(full_name, user_id), patients:patient_id(age, blood_type, allergies, chronic_conditions, current_medications)').eq('doctor_id', user.id);
+    const { data } = await supabase
+      .from('doctor_assignments')
+      .select('*, profiles:patient_id(full_name, user_id), patients:patient_id(age, blood_type, allergies, chronic_conditions, current_medications)')
+      .eq('doctor_id', user.id);
     setAssignments(data || []);
   };
 
@@ -86,22 +86,32 @@ const DoctorDashboard = () => {
     URL.revokeObjectURL(url);
   };
 
-  const addPatient = async () => {
-    if (!user || !patientEmail.trim()) return;
-    // Look up user by email via profiles — we need to find the patient user_id
-    // Since we can't query auth.users, we search profiles that have patient role
-    toast.info('Looking up patient...');
-    // For now, we'll use a simple approach - the doctor enters the patient's user ID or email
-    // In production, this would be a proper lookup system
-    setAddPatientDialog(false);
-    setPatientEmail('');
-    toast.error('Patient lookup requires admin API. Please add patients through the admin panel.');
+  const handleAddRecord = async (patientId: string, data: any) => {
+    const { error } = await supabase.from('medical_records').insert({
+      patient_id: patientId,
+      title: data.title,
+      description: data.description || null,
+      record_date: data.record_date,
+      record_type: data.record_type,
+      doctor_notes: data.doctor_notes || null,
+    });
+    if (error) {
+      toast.error('Failed to add record');
+      return;
+    }
+    toast.success('Record added');
+    // Refresh records for this patient
+    const { data: refreshed } = await supabase.from('medical_records').select('*').eq('patient_id', patientId).order('record_date', { ascending: false });
+    setPatientRecords((prev) => ({ ...prev, [patientId]: refreshed || [] }));
+    setAddRecordFor(null);
   };
 
   const filtered = assignments.filter((a) => {
     const name = (a.profiles as any)?.full_name || '';
     return name.toLowerCase().includes(search.toLowerCase());
   });
+
+  const assignedPatientIds = assignments.map((a) => a.patient_id);
 
   return (
     <DashboardLayout>
@@ -111,6 +121,9 @@ const DoctorDashboard = () => {
             <h1 className="text-2xl font-heading font-bold text-foreground">My Patients</h1>
             <p className="text-muted-foreground">{assignments.length} assigned patient{assignments.length !== 1 ? 's' : ''}</p>
           </div>
+          <Button onClick={() => setAssignDialog(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />Add Patient
+          </Button>
         </div>
 
         <div className="relative">
@@ -120,124 +133,30 @@ const DoctorDashboard = () => {
 
         <div className="space-y-3">
           {filtered.map((assignment) => {
-            const profile = assignment.profiles as any;
-            const patient = assignment.patients as any;
             const patientId = assignment.patient_id;
-            const isExpanded = expandedPatient === patientId;
-            const records = patientRecords[patientId] || [];
-            const docs = patientDocs[patientId] || [];
-
             return (
-              <Card key={assignment.id} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <button className="w-full p-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
-                    onClick={() => expandPatient(patientId)}>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-foreground">{profile?.full_name || 'Unknown'}</h3>
-                        <div className="flex gap-2 text-xs text-muted-foreground">
-                          {patient?.age && <span>Age: {patient.age}</span>}
-                          {patient?.blood_type && <Badge variant="outline" className="text-xs">{patient.blood_type}</Badge>}
-                        </div>
-                      </div>
-                    </div>
-                    {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                  </button>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                        className="border-t border-border overflow-hidden">
-                        <div className="p-4 space-y-4">
-                          {/* Patient info */}
-                          {patient && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              {patient.allergies?.length > 0 && (
-                                <div><p className="text-xs text-muted-foreground mb-1">Allergies</p><div className="flex flex-wrap gap-1">{patient.allergies.map((a: string, i: number) => <Badge key={i} variant="destructive" className="text-xs">{a}</Badge>)}</div></div>
-                              )}
-                              {patient.chronic_conditions?.length > 0 && (
-                                <div><p className="text-xs text-muted-foreground mb-1">Conditions</p><div className="flex flex-wrap gap-1">{patient.chronic_conditions.map((c: string, i: number) => <Badge key={i} variant="secondary" className="text-xs">{c}</Badge>)}</div></div>
-                              )}
-                              {patient.current_medications?.length > 0 && (
-                                <div><p className="text-xs text-muted-foreground mb-1">Medications</p><div className="flex flex-wrap gap-1">{patient.current_medications.map((m: string, i: number) => <Badge key={i} variant="outline" className="text-xs">{m}</Badge>)}</div></div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Export */}
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => exportCSV(patientId, profile?.full_name || 'patient')}>
-                              <Download className="h-3 w-3 mr-1" />Export CSV
-                            </Button>
-                          </div>
-
-                          {/* Records */}
-                          <div>
-                            <h4 className="text-sm font-semibold text-foreground mb-2">Medical Records ({records.length})</h4>
-                            <div className="space-y-2">
-                              {records.map((record) => (
-                                <div key={record.id} className="p-3 rounded-lg bg-muted/50 border border-border">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex items-start gap-2">
-                                      <FileText className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                                      <div>
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium text-sm text-foreground">{record.title}</span>
-                                          {record.is_flagged && <Flag className="h-3 w-3 text-destructive fill-destructive" />}
-                                          <Badge variant="secondary" className="text-xs">{record.record_type.replace('_', ' ')}</Badge>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">{format(new Date(record.record_date), 'MMM d, yyyy')}</p>
-                                        {record.description && <p className="text-xs text-muted-foreground mt-1">{record.description}</p>}
-                                        {record.doctor_notes && <div className="mt-1 p-1.5 rounded bg-card text-xs"><StickyNote className="h-3 w-3 inline mr-1 text-primary" />{record.doctor_notes}</div>}
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-1 shrink-0">
-                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => toggleFlag(record)}>
-                                        <Flag className={`h-3 w-3 ${record.is_flagged ? 'text-destructive fill-destructive' : ''}`} />
-                                      </Button>
-                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setNoteDialog({ recordId: record.id, note: record.doctor_notes || '' })}>
-                                        <StickyNote className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                              {records.length === 0 && <p className="text-xs text-muted-foreground">No records</p>}
-                            </div>
-                          </div>
-
-                          {/* Documents */}
-                          <div>
-                            <h4 className="text-sm font-semibold text-foreground mb-2">Documents ({docs.length})</h4>
-                            <div className="space-y-1">
-                              {docs.map((doc) => (
-                                <div key={doc.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
-                                  <UploadIcon className="h-4 w-4 text-accent shrink-0" />
-                                  <span className="text-sm text-foreground flex-1 truncate">{doc.file_name}</span>
-                                  <span className="text-xs text-muted-foreground">{format(new Date(doc.uploaded_at), 'MMM d')}</span>
-                                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => handleDownloadDoc(doc)}>
-                                    <Download className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ))}
-                              {docs.length === 0 && <p className="text-xs text-muted-foreground">No documents</p>}
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </CardContent>
-              </Card>
+              <PatientCard
+                key={assignment.id}
+                assignment={assignment}
+                isExpanded={expandedPatient === patientId}
+                records={patientRecords[patientId] || []}
+                docs={patientDocs[patientId] || []}
+                onToggle={() => expandPatient(patientId)}
+                onToggleFlag={toggleFlag}
+                onOpenNote={(record) => setNoteDialog({ recordId: record.id, note: record.doctor_notes || '' })}
+                onDownloadDoc={handleDownloadDoc}
+                onExportCSV={() => exportCSV(patientId, (assignment.profiles as any)?.full_name || 'patient')}
+                onAddRecord={() => setAddRecordFor({ patientId, name: (assignment.profiles as any)?.full_name || 'Patient' })}
+              />
             );
           })}
           {filtered.length === 0 && (
             <div className="text-center py-16 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
               <p>No patients assigned yet</p>
+              <Button variant="outline" className="mt-4" onClick={() => setAssignDialog(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />Add Your First Patient
+              </Button>
             </div>
           )}
         </div>
@@ -253,6 +172,25 @@ const DoctorDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Assign patient dialog */}
+      {user && (
+        <AssignPatientDialog
+          open={assignDialog}
+          onOpenChange={setAssignDialog}
+          doctorId={user.id}
+          assignedPatientIds={assignedPatientIds}
+          onAssigned={() => { fetchAssignments(); setAssignDialog(false); }}
+        />
+      )}
+
+      {/* Add record dialog */}
+      <AddRecordDialog
+        open={!!addRecordFor}
+        onOpenChange={(o) => !o && setAddRecordFor(null)}
+        patientName={addRecordFor?.name || ''}
+        onSave={(data) => addRecordFor && handleAddRecord(addRecordFor.patientId, data)}
+      />
     </DashboardLayout>
   );
 };
