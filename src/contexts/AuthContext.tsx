@@ -58,31 +58,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, userRole: 'patient' | 'doctor') => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName },
+        data: { full_name: fullName, user_role: userRole },
         emailRedirectTo: window.location.origin,
       },
     });
 
     if (error) return { error };
-
-    if (data.user) {
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({ user_id: data.user.id, role: userRole });
-
-      if (roleError) return { error: new Error(roleError.message) };
-
-      if (userRole === 'patient') {
-        await supabase.from('patients').insert({ user_id: data.user.id });
-      }
-
-      setRole(userRole);
-    }
-
+    setRole(userRole);
     return { error: null };
   };
 
