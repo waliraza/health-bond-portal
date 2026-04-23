@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Search, FileText, Edit, Trash2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useRealtime } from '@/hooks/useRealtime';
 
 const recordTypes = ['general', 'consultation', 'lab_result', 'prescription', 'surgery', 'vaccination', 'diagnosis'];
 
@@ -33,6 +34,8 @@ const MedicalRecords = () => {
   };
 
   useEffect(() => { fetchRecords(); }, [user]);
+
+  useRealtime('medical_records', fetchRecords, user ? `patient_id=eq.${user.id}` : undefined, !!user);
 
   const handleSave = async () => {
     if (!user || !form.title.trim()) { toast.error('Title is required'); return; }
