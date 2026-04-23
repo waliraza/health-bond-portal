@@ -10,6 +10,8 @@ import MedicalRecords from "./pages/patient/MedicalRecords";
 import Documents from "./pages/patient/Documents";
 import HealthTimeline from "./pages/patient/HealthTimeline";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
+import DoctorProfile from "./pages/doctor/DoctorProfile";
+import FindDoctors from "./pages/patient/FindDoctors";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -28,7 +30,9 @@ const App = () => (
             <Route path="/patient/records" element={<ProtectedRoute allowedRole="patient"><MedicalRecords /></ProtectedRoute>} />
             <Route path="/patient/documents" element={<ProtectedRoute allowedRole="patient"><Documents /></ProtectedRoute>} />
             <Route path="/patient/timeline" element={<ProtectedRoute allowedRole="patient"><HealthTimeline /></ProtectedRoute>} />
+            <Route path="/patient/doctors" element={<ProtectedRoute allowedRole="patient"><FindDoctors /></ProtectedRoute>} />
             <Route path="/doctor" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
+            <Route path="/doctor/profile" element={<ProtectedRoute allowedRole="doctor"><DoctorProfile /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

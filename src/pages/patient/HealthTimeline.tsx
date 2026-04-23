@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, FileText, Upload, Calendar, Flag, StickyNote } from 'lucide-react';
 import { format } from 'date-fns';
+import { useRealtime } from '@/hooks/useRealtime';
 
 const HealthTimeline = () => {
   const { user } = useAuth();
@@ -16,18 +17,20 @@ const HealthTimeline = () => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
 
-  useEffect(() => {
+  const fetchAll = async () => {
     if (!user) return;
-    const fetchAll = async () => {
-      const [r, d] = await Promise.all([
-        supabase.from('medical_records').select('*').eq('patient_id', user.id).order('record_date', { ascending: false }),
-        supabase.from('documents').select('*').eq('patient_id', user.id).order('uploaded_at', { ascending: false }),
-      ]);
-      setRecords(r.data || []);
-      setDocuments(d.data || []);
-    };
-    fetchAll();
-  }, [user]);
+    const [r, d] = await Promise.all([
+      supabase.from('medical_records').select('*').eq('patient_id', user.id).order('record_date', { ascending: false }),
+      supabase.from('documents').select('*').eq('patient_id', user.id).order('uploaded_at', { ascending: false }),
+    ]);
+    setRecords(r.data || []);
+    setDocuments(d.data || []);
+  };
+
+  useEffect(() => { fetchAll(); }, [user]);
+
+  useRealtime('medical_records', fetchAll, user ? `patient_id=eq.${user.id}` : undefined, !!user);
+  useRealtime('documents', fetchAll, user ? `patient_id=eq.${user.id}` : undefined, !!user);
 
   const timelineItems = [
     ...records.map((r) => ({ ...r, type: 'record', date: r.record_date })),

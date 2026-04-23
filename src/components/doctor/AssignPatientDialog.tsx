@@ -43,9 +43,10 @@ const AssignPatientDialog = ({ open, onOpenChange, doctorId, assignedPatientIds,
     setAssigning(patientUserId);
     const { error } = await supabase.from('doctor_assignments').insert({ doctor_id: doctorId, patient_id: patientUserId });
     if (error) {
-      toast.error('Failed to assign patient');
+      console.error('Assign error:', error);
+      toast.error(error.message || 'Failed to assign patient');
     } else {
-      toast.success('Patient assigned');
+      toast.success('Patient added to your panel');
       onAssigned();
     }
     setAssigning(null);

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, Search, FileText, Image, File, Trash2, Download, CloudUpload } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useRealtime } from '@/hooks/useRealtime';
 
 const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 const maxSize = 10 * 1024 * 1024; // 10MB
@@ -30,6 +31,8 @@ const Documents = () => {
   };
 
   useEffect(() => { fetchDocuments(); }, [user]);
+
+  useRealtime('documents', fetchDocuments, user ? `patient_id=eq.${user.id}` : undefined, !!user);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
