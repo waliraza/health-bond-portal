@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Heart, LogOut, User, FileText, Upload, Clock, Users, Menu, X } from 'lucide-react';
+import { Heart, LogOut, User, FileText, Upload, Clock, Users, Menu, X, Stethoscope, Search } from 'lucide-react';
 import { useState } from 'react';
 
 interface DashboardLayoutProps {
@@ -12,6 +12,7 @@ interface DashboardLayoutProps {
 
 const patientNav = [
   { path: '/patient', icon: User, label: 'Profile' },
+  { path: '/patient/doctors', icon: Stethoscope, label: 'Find Doctors' },
   { path: '/patient/records', icon: FileText, label: 'Medical Records' },
   { path: '/patient/documents', icon: Upload, label: 'Documents' },
   { path: '/patient/timeline', icon: Clock, label: 'Timeline' },
@@ -19,6 +20,7 @@ const patientNav = [
 
 const doctorNav = [
   { path: '/doctor', icon: Users, label: 'My Patients' },
+  { path: '/doctor/profile', icon: Stethoscope, label: 'My Profile' },
 ];
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
