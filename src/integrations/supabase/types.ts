@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_requests: {
+        Row: {
+          created_at: string
+          doctor_id: string
+          id: string
+          message: string | null
+          patient_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          doctor_id: string
+          id?: string
+          message?: string | null
+          patient_id: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          doctor_id?: string
+          id?: string
+          message?: string | null
+          patient_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       doctor_assignments: {
         Row: {
           assigned_at: string
@@ -32,6 +62,42 @@ export type Database = {
           doctor_id?: string
           id?: string
           patient_id?: string
+        }
+        Relationships: []
+      }
+      doctors: {
+        Row: {
+          available: boolean
+          bio: string | null
+          created_at: string
+          id: string
+          license_number: string | null
+          specialty: string | null
+          updated_at: string
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          available?: boolean
+          bio?: string | null
+          created_at?: string
+          id?: string
+          license_number?: string | null
+          specialty?: string | null
+          updated_at?: string
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          available?: boolean
+          bio?: string | null
+          created_at?: string
+          id?: string
+          license_number?: string | null
+          specialty?: string | null
+          updated_at?: string
+          user_id?: string
+          years_experience?: number | null
         }
         Relationships: []
       }
