@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import PatientCard from '@/components/doctor/PatientCard';
 import AddRecordDialog from '@/components/doctor/AddRecordDialog';
 import AssignPatientDialog from '@/components/doctor/AssignPatientDialog';
+import RequestsPanel from '@/components/doctor/RequestsPanel';
+import { useRealtime } from '@/hooks/useRealtime';
 
 const DoctorDashboard = () => {
   const { user } = useAuth();
@@ -25,25 +27,55 @@ const DoctorDashboard = () => {
 
   const fetchAssignments = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data: assigns } = await supabase
       .from('doctor_assignments')
-      .select('*, profiles:patient_id(full_name, user_id), patients:patient_id(age, blood_type, allergies, chronic_conditions, current_medications)')
+      .select('*')
       .eq('doctor_id', user.id);
-    setAssignments(data || []);
+    if (!assigns || assigns.length === 0) {
+      setAssignments([]);
+      return;
+    }
+    const patientIds = assigns.map((a) => a.patient_id);
+    const [profiles, patients] = await Promise.all([
+      supabase.from('profiles').select('user_id, full_name').in('user_id', patientIds),
+      supabase.from('patients').select('user_id, age, blood_type, allergies, chronic_conditions, current_medications').in('user_id', patientIds),
+    ]);
+    const profMap = new Map((profiles.data || []).map((p) => [p.user_id, p]));
+    const patMap = new Map((patients.data || []).map((p) => [p.user_id, p]));
+    setAssignments(
+      assigns.map((a) => ({
+        ...a,
+        profiles: profMap.get(a.patient_id) || { full_name: 'Unknown' },
+        patients: patMap.get(a.patient_id) || null,
+      }))
+    );
   };
 
   useEffect(() => { fetchAssignments(); }, [user]);
+
+  // Realtime: refresh assignments and any expanded patient's records/docs
+  useRealtime('doctor_assignments', fetchAssignments, user ? `doctor_id=eq.${user.id}` : undefined, !!user);
+  useRealtime('medical_records', () => {
+    if (expandedPatient) refreshPatientData(expandedPatient);
+  }, undefined, !!user);
+  useRealtime('documents', () => {
+    if (expandedPatient) refreshPatientData(expandedPatient);
+  }, undefined, !!user);
+
+  const refreshPatientData = async (patientId: string) => {
+    const [r, d] = await Promise.all([
+      supabase.from('medical_records').select('*').eq('patient_id', patientId).order('record_date', { ascending: false }),
+      supabase.from('documents').select('*').eq('patient_id', patientId).order('uploaded_at', { ascending: false }),
+    ]);
+    setPatientRecords((prev) => ({ ...prev, [patientId]: r.data || [] }));
+    setPatientDocs((prev) => ({ ...prev, [patientId]: d.data || [] }));
+  };
 
   const expandPatient = async (patientId: string) => {
     if (expandedPatient === patientId) { setExpandedPatient(null); return; }
     setExpandedPatient(patientId);
     if (!patientRecords[patientId]) {
-      const [r, d] = await Promise.all([
-        supabase.from('medical_records').select('*').eq('patient_id', patientId).order('record_date', { ascending: false }),
-        supabase.from('documents').select('*').eq('patient_id', patientId).order('uploaded_at', { ascending: false }),
-      ]);
-      setPatientRecords((prev) => ({ ...prev, [patientId]: r.data || [] }));
-      setPatientDocs((prev) => ({ ...prev, [patientId]: d.data || [] }));
+      await refreshPatientData(patientId);
     }
   };
 
@@ -99,10 +131,8 @@ const DoctorDashboard = () => {
       toast.error('Failed to add record');
       return;
     }
-    toast.success('Record added');
-    // Refresh records for this patient
-    const { data: refreshed } = await supabase.from('medical_records').select('*').eq('patient_id', patientId).order('record_date', { ascending: false });
-    setPatientRecords((prev) => ({ ...prev, [patientId]: refreshed || [] }));
+    toast.success('Record added — patient will see it instantly');
+    await refreshPatientData(patientId);
     setAddRecordFor(null);
   };
 
@@ -125,6 +155,8 @@ const DoctorDashboard = () => {
             <UserPlus className="h-4 w-4 mr-2" />Add Patient
           </Button>
         </div>
+
+        {user && <RequestsPanel doctorId={user.id} onApproved={fetchAssignments} />}
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -154,6 +186,7 @@ const DoctorDashboard = () => {
             <div className="text-center py-16 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
               <p>No patients assigned yet</p>
+              <p className="text-xs mt-1">Patients can request appointments, or you can add them directly.</p>
               <Button variant="outline" className="mt-4" onClick={() => setAssignDialog(true)}>
                 <UserPlus className="h-4 w-4 mr-2" />Add Your First Patient
               </Button>
@@ -162,7 +195,6 @@ const DoctorDashboard = () => {
         </div>
       </div>
 
-      {/* Note dialog */}
       <Dialog open={!!noteDialog} onOpenChange={(o) => !o && setNoteDialog(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">Doctor's Note</DialogTitle></DialogHeader>
@@ -173,7 +205,6 @@ const DoctorDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Assign patient dialog */}
       {user && (
         <AssignPatientDialog
           open={assignDialog}
@@ -184,7 +215,6 @@ const DoctorDashboard = () => {
         />
       )}
 
-      {/* Add record dialog */}
       <AddRecordDialog
         open={!!addRecordFor}
         onOpenChange={(o) => !o && setAddRecordFor(null)}
