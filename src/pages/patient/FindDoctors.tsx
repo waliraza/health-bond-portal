@@ -43,7 +43,7 @@ const FindDoctors = () => {
     setDoctors(
       (docRes.data || []).map((d) => ({
         ...d,
-        full_name: profMap.get(d.user_id) || 'Doctor',
+        full_name: d.full_name || profMap.get(d.user_id) || 'Doctor',
       }))
     );
     setRequests(reqRes.data || []);
