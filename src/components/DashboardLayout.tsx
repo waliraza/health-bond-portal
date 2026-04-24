@@ -43,7 +43,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="p-6 border-b border-border">
           <Link to="/" className="flex items-center gap-2">
             <Heart className="h-6 w-6 text-primary" />
-            <span className="text-lg font-heading font-bold text-foreground">HealthVault</span>
+            <span className="text-lg font-heading font-bold text-foreground">DocSync</span>
           </Link>
         </div>
         <nav className="flex-1 p-4 space-y-1">
@@ -78,7 +78,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-5 w-5 text-primary" />
-          <span className="font-heading font-bold text-foreground">HealthVault</span>
+          <span className="font-heading font-bold text-foreground">DocSync</span>
         </Link>
         <Button variant="ghost" size="icon" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

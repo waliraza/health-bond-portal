@@ -27,7 +27,7 @@ const Auth = () => {
               <Heart className="h-12 w-12 text-primary-foreground" />
             </div>
           </div>
-          <h1 className="text-4xl font-heading font-bold text-primary-foreground mb-4">HealthVault</h1>
+          <h1 className="text-4xl font-heading font-bold text-primary-foreground mb-4">DocSync</h1>
           <p className="text-primary-foreground/80 text-lg">Your secure digital health records portal. Access your medical history, upload documents, and connect with your healthcare providers.</p>
           <div className="mt-10 grid grid-cols-3 gap-4">
             {[{ icon: Shield, label: 'Secure' }, { icon: Stethoscope, label: 'Connected' }, { icon: User, label: 'Personal' }].map((item) => (
@@ -45,7 +45,7 @@ const Auth = () => {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md">
           <div className="lg:hidden flex items-center justify-center mb-8 gap-2">
             <Heart className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-heading font-bold text-foreground">HealthVault</span>
+            <span className="text-2xl font-heading font-bold text-foreground">DocSync</span>
           </div>
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
